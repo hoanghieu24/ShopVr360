@@ -18,6 +18,8 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class OderService {
@@ -59,14 +61,14 @@ public class OderService {
         float totalKg = 0;
         int tonggia = 0;
 
-        for (CartItemRequest itemReq : request.getCartItems()) {
-            var product = productRepository.findById(itemReq.getProductId())
-                    .orElseThrow(() -> new RuntimeException("Product not found id=" + itemReq.getProductId()));
-
-            totalKg += product.getKg() * itemReq.getQuantity();
-            tonggia += product.getGiaban() * itemReq.getQuantity();
-
-        }
+//        for (CartItemRequest itemReq : request.getCartItems()) {
+//            var product = productRepository.findById(itemReq.getProductId())
+//                    .orElseThrow(() -> new RuntimeException("Product not found id=" + itemReq.getProductId()));
+//
+//            totalKg += product.getKg() * itemReq.getQuantity();
+//            tonggia += product.getGiaban() * itemReq.getQuantity();
+//
+//        }
 
         var province = provinceRepository.findById(request.getThanhpho())
                 .orElseThrow(() -> new RuntimeException("Province not found id=" + request.getThanhpho()));
@@ -80,106 +82,111 @@ public class OderService {
 
         TableDonhang savedDh = odersRepository.save(dh);
 
-        for (CartItemRequest itemReq : request.getCartItems()) {
-            var product = productRepository.findById(itemReq.getProductId())
-                    .orElseThrow(() -> new RuntimeException("Product not found id=" + itemReq.getProductId()));
-
-            TableChitietdonhang chitiet = new TableChitietdonhang();
-
-            chitiet.setIdDonhang(savedDh.getId());
-            chitiet.setIdSanpham(product.getId());
-            chitiet.setTen(product.getTenVi());
-            chitiet.setSoluong(itemReq.getQuantity());
-            chitiet.setGia(product.getGiaban());
-            chitiet.setKg(product.getKg());
-
-            chitiet.setSize("default");
-            chitiet.setMasp(product.getMasp());
-            chitiet.setMadonhang(savedDh.getMadonhang());
-            chitiet.setPhoto(product.getPhoto());
-            chitiet.setMausac("default");
-            chitiet.setStt(1L);
-
-            chitiet.setTonggia(product.getGiaban() * itemReq.getQuantity());
-            chitiet.setGiakm(0);
-            chitiet.setView(0);
-
-            chitiet.setNgaysua(now);
-            chitiet.setNgaytao(now);
-
-            chitietRepository.save(chitiet);
-        }
+//        for (CartItemRequest itemReq : request.getCartItems()) {
+//            var product = productRepository.findById(itemReq.getProductId())
+//                    .orElseThrow(() -> new RuntimeException("Product not found id=" + itemReq.getProductId()));
+//
+//            TableChitietdonhang chitiet = new TableChitietdonhang();
+//
+//            chitiet.setIdDonhang(savedDh.getId());
+//            chitiet.setIdSanpham(product.getId());
+//            chitiet.setTen(product.getTenVi());
+//            chitiet.setSoluong(itemReq.getQuantity());
+//            chitiet.setGia(product.getGiaban());
+//            chitiet.setKg(product.getKg());
+//
+//            chitiet.setSize("default");
+//            chitiet.setMasp(product.getMasp());
+//            chitiet.setMadonhang(savedDh.getMadonhang());
+//            chitiet.setPhoto(product.getPhoto());
+//            chitiet.setMausac("default");
+//            chitiet.setStt(1L);
+//
+//            chitiet.setTonggia(product.getGiaban() * itemReq.getQuantity());
+//            chitiet.setGiakm(0);
+//            chitiet.setView(0);
+//
+//            chitiet.setNgaysua(now);
+//            chitiet.setNgaytao(now);
+//
+//            chitietRepository.save(chitiet);
+//        }
         System.out.println(totalKg);
         System.out.println(tonggia);
         return savedDh;
     }
 
-    public TableDonhang updateDonhang(Integer id, OderRequest request) {
+    public TableDonhang updateDonhang(Long id, OderRequest request) {
 
         // Lấy đơn hàng cũ
         TableDonhang dh = odersRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Order not found id=" + id));
 
-        // Map các field từ request sang entity (chỉ field trùng)
+        // Map các field từ request sang entity (ngoại trừ cartItems)
         modelMapper.map(request, dh);
 
-        // Cập nhật ngày sửa
         int now = (int) (System.currentTimeMillis() / 1000);
         dh.setNgaycapnhat(now);
 
-        // Xử lý lại tổng giá + cân nặng
+        // Xoá chi tiết đơn hàng cũ
+        chitietRepository.deleteAllByIdDonhang(dh.getId());
+
         float totalKg = 0;
         int tonggia = 0;
 
-        // CartItems mới => xoá cũ, tạo lại
-        chitietRepository.deleteAllByIdDonhang(dh.getId());
+        // Tạo chi tiết đơn hàng mới từ request
+//        if (request.getCartItems() != null && !request.getCartItems().isEmpty()) {
+//            for (CartItemRequest itemReq : request.getCartItems()) {
+//                TableProduct product = productRepository.findById(itemReq.getProductId())
+//                        .orElseThrow(() -> new RuntimeException("Product not found id=" + itemReq.getProductId()));
+//
+//                // Tính tổng cân nặng và tổng giá
+//                totalKg += product.getKg() * itemReq.getQuantity();
+//                tonggia += product.getGiaban() * itemReq.getQuantity();
+//
+//                // Tạo chi tiết đơn hàng
+//                TableChitietdonhang chitiet = new TableChitietdonhang();
+//                chitiet.setIdDonhang(dh.getId());
+//                chitiet.setIdSanpham(product.getId());
+//                chitiet.setTen(product.getTenVi());
+//                chitiet.setSoluong(itemReq.getQuantity());
+//                chitiet.setGia(product.getGiaban());
+//                chitiet.setKg(product.getKg());
+//                chitiet.setSize("default");
+//                chitiet.setMasp(product.getMasp());
+//                chitiet.setMadonhang(dh.getMadonhang());
+//                chitiet.setPhoto(product.getPhoto());
+//                chitiet.setMausac("default");
+//                chitiet.setStt(1L);
+//                chitiet.setTonggia(product.getGiaban() * itemReq.getQuantity());
+//                chitiet.setGiakm(0);
+//                chitiet.setView(0);
+//                chitiet.setNgaytao(now);
+//                chitiet.setNgaysua(now);
+//
+//                chitietRepository.save(chitiet);
+//            }
+//        }
 
-        for (CartItemRequest itemReq : request.getCartItems()) {
-            var product = productRepository.findById(itemReq.getProductId())
-                    .orElseThrow(() -> new RuntimeException("Product not found id=" + itemReq.getProductId()));
-
-            totalKg += product.getKg() * itemReq.getQuantity();
-            tonggia += product.getGiaban() * itemReq.getQuantity();
-
-            TableChitietdonhang chitiet = new TableChitietdonhang();
-            chitiet.setIdDonhang(dh.getId());
-            chitiet.setIdSanpham(product.getId());
-            chitiet.setTen(product.getTenVi());
-            chitiet.setSoluong(itemReq.getQuantity());
-            chitiet.setGia(product.getGiaban());
-            chitiet.setKg(product.getKg());
-            chitiet.setSize("default");
-            chitiet.setMasp(product.getMasp());
-            chitiet.setMadonhang(dh.getMadonhang());
-            chitiet.setPhoto(product.getPhoto());
-            chitiet.setMausac("default");
-            chitiet.setStt(1L);
-            chitiet.setTonggia(product.getGiaban() * itemReq.getQuantity());
-            chitiet.setGiakm(0);
-            chitiet.setView(0);
-            chitiet.setNgaysua(now);
-            chitiet.setNgaytao(now);
-            chitietRepository.save(chitiet);
-        }
-
-        // Tính lại phí vận chuyển
+        // Tính phí vận chuyển dựa trên thành phố
         var province = provinceRepository.findById(request.getThanhpho())
                 .orElseThrow(() -> new RuntimeException("Province not found id=" + request.getThanhpho()));
-
         float phivanchuyen = totalKg * province.getPhivanchuyen();
         dh.setPhivanchuyen(phivanchuyen);
 
+        // Cập nhật tổng giá đơn hàng
         dh.setTonggia(tonggia + Math.round(phivanchuyen));
 
-        // Set default nếu request không gửi lên đủ
+        // Gán các field mặc định nếu thiếu
         setDefaultFields(dh, request);
 
         return odersRepository.save(dh);
     }
 
 
+
     public void deleteProduct(Long id) {
-        TableDonhang dh = odersRepository.findById(Math.toIntExact(id))
+        TableDonhang dh = odersRepository.findById((long) Math.toIntExact(id))
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng có id = " + id));
 
         dh.setIsDelete(1);
@@ -188,7 +195,7 @@ public class OderService {
     }
 
 
-    public void deleteMultiple(List<Integer> ids) {
+    public void deleteMultiple(List<Long > ids) {
         List<TableDonhang> orders = odersRepository.findAllById(ids);
 
         if (orders.isEmpty()) {
@@ -233,5 +240,73 @@ public class OderService {
         dh.setNgaycapnhat(now);
     }
 
+
+    public Map<String, Object> getOrderDetail(Long  id) {
+
+        Optional<TableDonhang> orderOpt = odersRepository.findById(id);
+        if (orderOpt.isEmpty()) {
+            throw new RuntimeException("Đơn hàng không tồn tại");
+        }
+        TableDonhang order = orderOpt.get();
+
+
+        String madonhang = order.getMadonhang();
+
+
+        List<TableChitietdonhang> items = chitietRepository.findByMadonhang(madonhang);
+
+
+        double totalWeight = items.stream()
+                .mapToDouble(item -> item.getKg() * item.getSoluong()) // kg
+                .sum();
+
+        int shippingFee;
+        if (totalWeight <= 3) shippingFee = 18000;
+        else if (totalWeight <= 5) shippingFee = 25000;
+        else if (totalWeight <= 6) shippingFee = 31000;
+        else if (totalWeight <= 7) shippingFee = 37000;
+        else if (totalWeight <= 8) shippingFee = 43000;
+        else if (totalWeight <= 9) shippingFee = 49000;
+        else shippingFee = 49000 + (int)((totalWeight - 9) * 10000);
+
+
+        int totalServiceFee = shippingFee + (order.getPhithem() != null ? order.getPhithem() : 0);
+
+
+        int totalProductPrice = items.stream()
+                .mapToInt(item -> item.getGia() * item.getSoluong())
+                .sum();
+        int totalPayment = totalProductPrice + totalServiceFee - (order.getPhigiam() != null ? order.getPhigiam() : 0);
+
+        // 8. Trả về map cho FE
+        return Map.of(
+                "order", order,
+                "items", items,
+                "totalWeight", totalWeight,
+                "shippingFee", shippingFee,
+                "totalServiceFee", totalServiceFee,
+                "totalPayment", totalPayment
+        );
+    }
+
+
+    public void payOrder(Long  id) {
+        TableDonhang n = odersRepository.findById(id).orElseThrow();
+        n.setThanhtoan(n.getThanhtoan() == 1 ? 0 : 1);
+        odersRepository.save(n);
+    }
+
+    public void statusOrder(Long  id, Integer status) {
+        TableDonhang n = odersRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn!"));
+
+        // Kiểm tra status hợp lệ
+        if (status < 1 || status > 5) {
+            throw new IllegalArgumentException("Trạng thái không hợp lệ!");
+        }
+
+        n.setTinhtrang(status);
+        odersRepository.save(n);
+    }
 
 }

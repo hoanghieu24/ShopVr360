@@ -15,7 +15,7 @@ public class TableDonhang {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
-    private Integer id;
+    private Long  id;
 
     @Size(max = 20)
     @NotNull
@@ -137,7 +137,7 @@ public class TableDonhang {
     private Integer idUser;
 
     @Min(1)
-    @Max(100)
+
     @NotNull
     @Column(name = "phuong", nullable = false, length = 11)
     private Integer phuong;
@@ -177,11 +177,11 @@ public class TableDonhang {
     @Column(name = "is_delete", nullable = false)
     private Integer isDelete;
 
-    public Integer getId() {
+    public Long  getId() {
         return id;
     }
 
-    public void setId(Integer id) {
+    public void setId(Long  id) {
         this.id = id;
     }
 

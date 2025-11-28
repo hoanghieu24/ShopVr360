@@ -1,9 +1,10 @@
 package com.shopvr360.backend.dto;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class OderRequest {
-    private Long id;
+    private Long  id;
     private String hoten;
     private String dienthoai;
     private Long thanhpho;
@@ -16,12 +17,13 @@ public class OderRequest {
     private String httt;       // hình thức thanh toán
     private Integer htgh;
     private Integer idUser;
+//    private List<CartItemRequest> cartItems = new ArrayList<>();// phương thức vận chuyển
 
-    public Long getId() {
+    public Long  getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(Long  id) {
         this.id = id;
     }
 
@@ -33,20 +35,20 @@ public class OderRequest {
         this.idUser = idUser;
     }
 
-    private List<CartItemRequest> cartItems;// phương thức vận chuyển
+
 
     public String getDiachi() {
         return diachi;
     }
 
 
-    public List<CartItemRequest> getCartItems() {
-        return cartItems;
-    }
-
-    public void setCartItems(List<CartItemRequest> cartItems) {
-        this.cartItems = cartItems;
-    }
+//    public List<CartItemRequest> getCartItems() {
+//        return cartItems;
+//    }
+//
+//    public void setCartItems(List<CartItemRequest> cartItems) {
+//        this.cartItems = cartItems;
+//    }
 
     public void setDiachi(String diachi) {
         this.diachi = diachi;

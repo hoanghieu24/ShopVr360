@@ -8,7 +8,7 @@
       </div>
       <div class="header-right">
         <span class="product-count">Tổng: {{ totalProducts }} sản phẩm</span>
-        <button class="btn-add" @click="showAddModal = true">
+        <button class="btn-add" @click="openAddModal">
           ➕ Thêm sản phẩm
         </button>
       </div>
@@ -44,12 +44,10 @@
       <div class="filters-section">
         <select v-model="categoryFilter" class="filter-select" @change="handleFilterChange">
           <option value="">Tất cả danh mục</option>
-
           <option v-for="item in categories" :key="item.id" :value="item.id">
             {{ item.tenVi }}
           </option>
         </select>
-
 
         <select v-model="statusFilter" class="filter-select" @change="handleFilterChange">
           <option value="">Tất cả trạng thái</option>
@@ -110,7 +108,7 @@
               <td class="sticky-order">{{ getProductIndex(index) }}</td>
               <td class="image-cell">
                 <div class="product-img">
-                  <img :src="getImageUrl(product.photo)" :alt="product.ten_vi" @error="handleImageError" />
+                  <img :src="getImageUrl(product.photo)" :alt="product.tenVi" @error="handleImageError" />
                   <div v-if="product.gianewp && product.giaban" class="sale-badge">
                     -{{ calculateDiscount(product.giaban, product.gianewp) }}%
                   </div>
@@ -118,7 +116,7 @@
               </td>
               <td class="info-cell">
                 <div class="product-name">{{ product.tenVi }}</div>
-                <div v-if="product.ten_en" class="product-name-en">{{ product.ten_en }}</div>
+                <div v-if="product.tenEn" class="product-name-en">{{ product.tenEn }}</div>
                 <div class="product-code">Mã: {{ product.masp || 'N/A' }}</div>
                 <div class="product-tags" v-if="product.tags">
                   <span v-for="tag in getTags(product.tags)" :key="tag">#{{ tag }}</span>
@@ -145,15 +143,16 @@
                     title="Nổi bật">⭐</button>
                   <button @click="toggleFlag(product, 'banchay')" :class="{ active: product.banchay === 1 }"
                     title="Bán chạy">🔥</button>
-                  <button @click="toggleFlag(product, 'new')" :class="{ active: product.new === 1 }"
+                  <button @click="toggleFlag(product, 'newField')" :class="{ active: product.newField === 1 }"
                     title="Mới">🆕</button>
                   <button @click="toggleFlag(product, 'khuyenmai')" :class="{ active: product.khuyenmai === 1 }"
                     title="Khuyến mãi">🎁</button>
                   <button @click="toggleFlag(product, 'nenmua')" :class="{ active: product.nenmua === 1 }"
                     title="Nên mua">👍</button>
-                  <button @click="toggleStatus(product , )" :class="{ active: product.hienthi === 1 }"
-                    :title="product.hienthi === 1 ? 'Đang hiển thị' : 'Đang ẩn'">{{ product.hienthi === 1 ? '👁️' :
-                      '👁️‍🗨️' }}</button>
+                  <button @click="toggleStatus(product)" :class="{ active: product.hienthi === 1 }"
+                    :title="product.hienthi === 1 ? 'Đang hiển thị' : 'Đang ẩn'">
+                    {{ product.hienthi === 1 ? '👁️' : '👁️‍🗨️' }}
+                  </button>
                 </div>
               </td>
               <td class="views-cell">
@@ -184,7 +183,7 @@
           <button v-if="hasActiveFilters" @click="resetFilters" class="btn-reset">
             Xóa bộ lọc
           </button>
-          <button v-else @click="showAddModal = true" class="btn-add">
+          <button v-else @click="openAddModal" class="btn-add">
             ➕ Thêm sản phẩm đầu tiên
           </button>
         </div>
@@ -228,7 +227,7 @@
           <button @click="showDeleteModal = false" class="close-btn">✕</button>
         </div>
         <div class="modal-body">
-          <p>Bạn có chắc chắn muốn xóa sản phẩm <strong>{{ productToDelete?.ten_vi }}</strong>?</p>
+          <p>Bạn có chắc chắn muốn xóa sản phẩm <strong>{{ productToDelete?.tenVi }}</strong>?</p>
           <p class="warning">Hành động này không thể hoàn tác!</p>
         </div>
         <div class="modal-footer">
@@ -250,10 +249,13 @@
         <div class="modal-body">
           <p>Bạn có chắc chắn muốn xóa <strong>{{ selectedProducts.length }} sản phẩm</strong> đã chọn?</p>
           <div class="selected-list">
-            <div v-for="product in selectedProducts" :key="product.id" class="selected-item">
+            <div v-for="product in selectedProducts.slice(0, 5)" :key="product.id" class="selected-item">
               <img :src="getImageUrl(product.photo)" class="thumb">
-              <span class="product-name">{{ product.ten_vi }}</span>
+              <span class="product-name">{{ product.tenVi }}</span>
               <span class="product-id">(ID: {{ product.id }})</span>
+            </div>
+            <div v-if="selectedProducts.length > 5" class="selected-more">
+              ... và {{ selectedProducts.length - 5 }} sản phẩm khác
             </div>
           </div>
           <p class="warning">Hành động này không thể hoàn tác!</p>
@@ -269,148 +271,387 @@
 
     <!-- Add/Edit Product Modal -->
     <div v-if="showAddModal || showEditModal" class="modal-overlay">
-      <div class="modal large-modal">
+      <div class="modal large-modal product-modal">
         <div class="modal-header">
-          <h3>{{ showEditModal ? 'Sửa Sản Phẩm' : 'Thêm Sản Phẩm Mới' }}</h3>
-          <button @click="closeModal" class="close-btn">✕</button>
+          <h3>
+            <span class="modal-icon">{{ showEditModal ? '✏️' : '➕' }}</span>
+            {{ showEditModal ? 'Chỉnh Sửa Sản Phẩm' : 'Thêm Sản Phẩm Mới' }}
+            <span v-if="showEditModal" class="product-id">(ID: {{ formData.id }})</span>
+          </h3>
+          <button @click="closeModal" class="close-btn" :disabled="submitting">✕</button>
         </div>
+
+        <!-- Progress Steps -->
+        <div class="form-steps">
+          <div class="step-indicator">
+            <div v-for="(step, index) in formSteps" :key="index"
+              :class="['step', { active: currentStep === index, completed: currentStep > index }]"
+              @click="goToStep(index)">
+              <span class="step-number">{{ index + 1 }}</span>
+              <span class="step-label">{{ step.label }}</span>
+            </div>
+          </div>
+        </div>
+
         <div class="modal-body">
-          <form @submit.prevent="submitProduct" class="product-form">
-            <div class="form-section">
-              <h4>Thông tin cơ bản</h4>
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="tenVi">Tên sản phẩm (Tiếng Việt) *</label>
+          <form @submit.prevent="submitProduct" class="product-form" enctype="multipart/form-data">
+
+            <!-- Step 1: Thông tin cơ bản -->
+            <div v-if="currentStep === 0" class="form-step">
+              <div class="step-header">
+                <h4>📋 Thông tin cơ bản</h4>
+                <p class="step-description">Nhập thông tin cơ bản của sản phẩm</p>
+              </div>
+
+              <div class="form-grid">
+                <div class="form-group required">
+                  <label for="tenVi" class="form-label">
+                    Tên sản phẩm (Tiếng Việt)
+                    <span class="required-star">*</span>
+                  </label>
                   <input type="text" id="tenVi" v-model="formData.tenVi" required
-                    placeholder="Nhập tên sản phẩm tiếng Việt" class="form-input">
+                    placeholder="Nhập tên sản phẩm tiếng Việt" class="form-input"
+                    :class="{ error: !formData.tenVi.trim() }">
+                  <div v-if="!formData.tenVi.trim()" class="error-message">Vui lòng nhập tên sản phẩm</div>
                 </div>
+
                 <div class="form-group">
-                  <label for="ten_en">Tên sản phẩm (Tiếng Anh)</label>
+                  <label for="tenEn" class="form-label">Tên sản phẩm (Tiếng Anh)</label>
                   <input type="text" id="tenEn" v-model="formData.tenEn" placeholder="Nhập tên sản phẩm tiếng Anh"
                     class="form-input">
                 </div>
-              </div>
 
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="masp">Mã sản phẩm</label>
-                  <input type="text" id="masp" v-model="formData.masp" placeholder="Mã sản phẩm" class="form-input">
-                </div>
-                <div class="form-group">
-                  <label for="id_list">Danh mục *</label>
-                  <select id="id_list" v-model="formData.idList" required class="form-select">
+                <div class="form-group required">
+                  <label for="id_list" class="form-label">
+                    Danh mục
+                    <span class="required-star">*</span>
+                  </label>
+                  <select id="id_list" v-model="formData.idList" required class="form-select"
+                    :class="{ error: !formData.idList }">
                     <option value="">Chọn danh mục</option>
                     <option v-for="item in categories" :key="item.id" :value="item.id">
                       {{ item.tenVi }}
                     </option>
                   </select>
-
+                  <div v-if="!formData.idList" class="error-message">Vui lòng chọn danh mục</div>
                 </div>
-              </div>
 
-              <div class="form-row">
                 <div class="form-group">
-                  <label for="giaban">Giá bán *</label>
-                  <input type="number" id="giaban" v-model="formData.giaban" required min="0" placeholder="Giá bán"
+                  <label for="masp" class="form-label">Mã sản phẩm</label>
+                  <input type="text" id="masp" v-model="formData.masp" placeholder="Mã sản phẩm" class="form-input">
+                </div>
+
+                <div class="form-group required">
+                  <label for="giaban" class="form-label">
+                    Giá bán
+                    <span class="required-star">*</span>
+                  </label>
+                  <div class="price-input-group">
+                    <input type="number" id="giaban" v-model="formData.giaban" required min="0" placeholder="0"
+                      class="form-input price-input" :class="{ error: !formData.giaban || formData.giaban <= 0 }">
+                    <span class="currency">₫</span>
+                  </div>
+                  <div v-if="!formData.giaban || formData.giaban <= 0" class="error-message">
+                    Vui lòng nhập giá bán hợp lệ
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="gianewp" class="form-label">Giá khuyến mãi</label>
+                  <div class="price-input-group">
+                    <input type="number" id="gianewp" v-model="formData.gianewp" min="0" placeholder="0"
+                      class="form-input price-input">
+                    <span class="currency">₫</span>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="giacu" class="form-label">Giá cũ</label>
+                  <div class="price-input-group">
+                    <input type="number" id="giacu" v-model="formData.giacu" min="0" placeholder="0"
+                      class="form-input price-input">
+                    <span class="currency">₫</span>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="soluong" class="form-label">Số lượng tồn kho</label>
+                  <input type="number" id="soluong" v-model="formData.soluong" min="0" placeholder="0"
                     class="form-input">
                 </div>
-                <div class="form-group">
-                  <label for="gianewp">Giá khuyến mãi</label>
-                  <input type="number" id="gianewp" v-model="formData.gianewp" min="0" placeholder="Giá khuyến mãi"
-                    class="form-input">
-                </div>
-                <div class="form-group">
-                  <label for="giacu">Giá cũ</label>
-                  <input type="number" id="giacu" v-model="formData.giacu" min="0" placeholder="Giá cũ"
-                    class="form-input">
-                </div>
-              </div>
 
-              <div class="form-row">
                 <div class="form-group">
-                  <label for="soluong">Số lượng tồn kho</label>
-                  <input type="number" id="soluong" v-model="formData.soluong" min="0" placeholder="Số lượng"
+                  <label for="donVi" class="form-label">Đơn vị tính</label>
+                  <input type="text" id="donVi" v-model="formData.donVi" placeholder="Cái, Hộp, Gói..."
                     class="form-input">
                 </div>
-                <div class="form-group">
-                  <label for="stt">Thứ tự hiển thị</label>
-                  <input type="number" id="stt" v-model="formData.stt" min="1" placeholder="Thứ tự" class="form-input">
-                </div>
-              </div>
-            </div>
 
-            <div class="form-section">
-              <h4>Trạng thái sản phẩm</h4>
-              <div class="status-grid">
-                <label class="status-checkbox">
-                  <input type="checkbox" v-model="formData.noibat" :true-value="1" :false-value="0">
-                  <span class="status-icon">⭐</span>
-                  <span>Nổi bật</span>
-                </label>
-                <label class="status-checkbox">
-                  <input type="checkbox" v-model="formData.banchay" :true-value="1" :false-value="0">
-                  <span class="status-icon">🔥</span>
-                  <span>Bán chạy</span>
-                </label>
-                <label class="status-checkbox">
-                  <input type="checkbox" v-model="formData.new" :true-value="1" :false-value="0">
-                  <span class="status-icon">🆕</span>
-                  <span>Mới</span>
-                </label>
-                <label class="status-checkbox">
-                  <input type="checkbox" v-model="formData.khuyenmai" :true-value="1" :false-value="0">
-                  <span class="status-icon">🎁</span>
-                  <span>Khuyến mãi</span>
-                </label>
-                <label class="status-checkbox">
-                  <input type="checkbox" v-model="formData.nenmua" :true-value="1" :false-value="0">
-                  <span class="status-icon">👍</span>
-                  <span>Nên mua</span>
-                </label>
-                <label class="status-checkbox">
-                  <input type="checkbox" v-model="formData.hienthi" :true-value="1" :false-value="0">
-                  <span class="status-icon">👁️</span>
-                  <span>Hiển thị</span>
-                </label>
+                <div class="form-group">
+                  <label for="kg" class="form-label">Khối lượng (kg)</label>
+                  <div class="weight-input-group">
+                    <input type="number" id="kg" v-model="formData.kg" min="0" step="0.01" placeholder="0.00"
+                      class="form-input weight-input">
+                    <span class="unit">kg</span>
+                  </div>
+                  <div class="help-text">Khối lượng sản phẩm tính bằng kilogram</div>
+                </div>
               </div>
             </div>
 
-            <div class="form-section">
-              <h4>Mô tả & Nội dung</h4>
+            <!-- Step 2: Hình ảnh & Media -->
+            <div v-if="currentStep === 1" class="form-step">
+              <div class="step-header">
+                <h4>🖼️ Hình ảnh & Media</h4>
+                <p class="step-description">Tải lên hình ảnh và video cho sản phẩm</p>
+              </div>
+
+              <!-- Ảnh chính -->
+              <div class="upload-section">
+                <div class="section-title">Ảnh đại diện chính</div>
+
+                <div class="main-image-upload">
+                  <div v-if="mainImagePreview" class="main-image-preview">
+                    <img :src="mainImagePreview" alt="Preview" class="preview-image">
+                    <div class="preview-actions">
+                      <button type="button" @click="removeMainImage" class="btn-action danger" title="Xóa ảnh">
+                        🗑️
+                      </button>
+                      <button type="button" @click="openImageUpload" class="btn-action" title="Thay đổi ảnh">
+                        🔄
+                      </button>
+                    </div>
+                  </div>
+
+                  <div v-else class="upload-placeholder">
+                    <div class="upload-icon">📷</div>
+                    <p class="upload-text">Chưa có ảnh đại diện</p>
+                    <div class="upload-options">
+                      <input type="file" id="mainImageUpload" @change="handleMainImageUpload" accept="image/*"
+                        class="file-input" :disabled="submitting">
+                      <label for="mainImageUpload" class="upload-option-btn primary">
+                        <span class="upload-icon">📁</span>
+                        <span>Tải ảnh lên</span>
+                      </label>
+                      <span class="option-divider">hoặc</span>
+                      <input type="text" v-model="formData.photo" placeholder="Dán URL hình ảnh"
+                        class="form-input url-input" @input="handleUrlInput">
+                    </div>
+                    <div class="upload-hint">
+                      <small>Định dạng: JPG, PNG, GIF • Tối đa: 5MB • Tỷ lệ khuyến nghị: 1:1</small>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="imageError" class="error-message full-width">
+                  {{ imageError }}
+                </div>
+              </div>
+
+              <!-- Ảnh phụ -->
+              <div class="upload-section">
+                <div class="section-title">
+                  Ảnh phụ ({{ uploadedImages.length }}/5)
+                  <small class="optional">Tùy chọn</small>
+                </div>
+
+                <div class="additional-images">
+                  <div class="image-grid">
+                    <div v-for="(image, index) in uploadedImages" :key="index" class="image-item">
+                      <img :src="image.preview" :alt="image.name" class="preview-img">
+                      <div class="image-overlay">
+                        <button type="button" @click="removeImage(index)" class="btn-action danger small">
+                          ×
+                        </button>
+                      </div>
+                    </div>
+
+                    <div v-if="uploadedImages.length < 5" class="upload-item">
+                      <input type="file" id="fileUpload" @change="handleFileUpload" multiple accept="image/*"
+                        class="file-input">
+                      <label for="fileUpload" class="upload-box">
+                        <span class="upload-icon">➕</span>
+                        <span class="upload-text">Thêm ảnh</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Video -->
               <div class="form-group">
-                <label for="mota_vi">Mô tả ngắn (Tiếng Việt)</label>
-                <textarea id="mota_vi" v-model="formData.motaVi" rows="3" placeholder="Mô tả ngắn về sản phẩm..."
+                <label for="videoYoutube" class="form-label">
+                  Video YouTube
+                  <small class="optional">Tùy chọn</small>
+                </label>
+                <input type="text" id="videoYoutube" v-model="formData.videoYoutube"
+                  placeholder="ID hoặc URL video YouTube" class="form-input">
+                <div class="help-text">
+                  Ví dụ: dQw4w9WgXcQ hoặc https://youtu.be/dQw4w9WgXcQ
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 3: Mô tả & Thuộc tính -->
+            <div v-if="currentStep === 2" class="form-step">
+              <div class="step-header">
+                <h4>📝 Mô tả & Thuộc tính</h4>
+                <p class="step-description">Thêm mô tả và các thuộc tính của sản phẩm</p>
+              </div>
+
+              <div class="form-group">
+                <label for="motaVi" class="form-label">Mô tả ngắn (Tiếng Việt)</label>
+                <textarea id="motaVi" v-model="formData.motaVi" rows="3" placeholder="Mô tả ngắn về sản phẩm..."
                   class="form-textarea"></textarea>
+                <div class="char-count">{{ formData.motaVi.length }}/500</div>
               </div>
+
               <div class="form-group">
-                <label for="noidung_vi">Nội dung chi tiết (Tiếng Việt)</label>
-                <textarea id="noidung_vi" v-model="formData.noidungVi" rows="5"
-                  placeholder="Nội dung chi tiết về sản phẩm..." class="form-textarea"></textarea>
+                <label for="noidungVi" class="form-label">Nội dung chi tiết (Tiếng Việt)</label>
+                <textarea id="noidungVi" v-model="formData.noidungVi" rows="6"
+                  placeholder="Nội dung chi tiết về sản phẩm..." class="form-textarea large"></textarea>
+                <div class="char-count">{{ formData.noidungVi.length }}/2000</div>
+              </div>
+
+              <!-- Thuộc tính sản phẩm -->
+              <div class="attributes-section">
+                <div class="section-title">
+                  Thuộc tính sản phẩm
+                  <small class="optional">Tùy chọn</small>
+                </div>
+
+                <div class="attributes-list">
+                  <div v-for="(attribute, index) in formData.thuocTinh" :key="index" class="attribute-row">
+                    <input type="text" v-model="attribute.ten" placeholder="Tên thuộc tính"
+                      class="form-input attribute-input">
+                    <span class="attribute-separator">:</span>
+                    <input type="text" v-model="attribute.giaTri" placeholder="Giá trị"
+                      class="form-input attribute-input">
+                    <button type="button" @click="removeAttribute(index)" class="btn-action danger"
+                      title="Xóa thuộc tính">
+                      🗑️
+                    </button>
+                  </div>
+
+                  <button type="button" @click="addAttribute" class="btn-add-attribute">
+                    <span class="icon">➕</span>
+                    Thêm thuộc tính
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div class="form-section">
-              <h4>Hình ảnh & SEO</h4>
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="photo">URL hình ảnh chính</label>
-                  <input type="text" id="photo" v-model="formData.photo" placeholder="Đường dẫn hình ảnh"
-                    class="form-input">
+            <!-- Step 4: Cài đặt & SEO -->
+            <div v-if="currentStep === 3" class="form-step">
+              <div class="step-header">
+                <h4>⚙️ Cài đặt & SEO</h4>
+                <p class="step-description">Cấu hình trạng thái và tối ưu SEO</p>
+              </div>
+
+              <!-- Trạng thái sản phẩm -->
+              <div class="status-section">
+                <div class="section-title">Trạng thái sản phẩm</div>
+                <div class="status-grid compact">
+                  <label class="status-checkbox featured">
+                    <input type="checkbox" v-model="formData.noibat" :true-value="1" :false-value="0">
+                    <span class="status-icon">⭐</span>
+                    <span class="status-label">Nổi bật</span>
+                  </label>
+
+                  <label class="status-checkbox hot">
+                    <input type="checkbox" v-model="formData.banchay" :true-value="1" :false-value="0">
+                    <span class="status-icon">🔥</span>
+                    <span class="status-label">Bán chạy</span>
+                  </label>
+
+                  <label class="status-checkbox new">
+                    <input type="checkbox" v-model="formData.newField" :true-value="1" :false-value="0">
+                    <span class="status-icon">🆕</span>
+                    <span class="status-label">Mới</span>
+                  </label>
+
+                  <label class="status-checkbox sale">
+                    <input type="checkbox" v-model="formData.khuyenmai" :true-value="1" :false-value="0">
+                    <span class="status-icon">🎁</span>
+                    <span class="status-label">Khuyến mãi</span>
+                  </label>
+
+                  <label class="status-checkbox recommended">
+                    <input type="checkbox" v-model="formData.nenmua" :true-value="1" :false-value="0">
+                    <span class="status-icon">👍</span>
+                    <span class="status-label">Nên mua</span>
+                  </label>
+
+                  <label class="status-checkbox visible">
+                    <input type="checkbox" v-model="formData.hienthi" :true-value="1" :false-value="0">
+                    <span class="status-icon">👁️</span>
+                    <span class="status-label">Hiển thị</span>
+                  </label>
                 </div>
+              </div>
+
+              <!-- Thông tin SEO -->
+              <div class="seo-section">
+                <div class="section-title">
+                  Thông tin SEO
+                  <small class="optional">Tùy chọn</small>
+                </div>
+
                 <div class="form-group">
-                  <label for="tags">Tags (phân cách bằng dấu phẩy)</label>
+                  <label for="seoTitle" class="form-label">Tiêu đề SEO</label>
+                  <input type="text" id="seoTitle" v-model="formData.seoTitle" placeholder="Tiêu đề SEO"
+                    class="form-input">
+                  <div class="char-count">{{ formData.seoTitle.length }}/60</div>
+                </div>
+
+                <div class="form-group">
+                  <label for="seoDescription" class="form-label">Mô tả SEO</label>
+                  <textarea id="seoDescription" v-model="formData.seoDescription" rows="3" placeholder="Mô tả SEO"
+                    class="form-textarea"></textarea>
+                  <div class="char-count">{{ formData.seoDescription.length }}/160</div>
+                </div>
+
+                <div class="form-group">
+                  <label for="seoKeywords" class="form-label">Từ khóa SEO</label>
+                  <input type="text" id="seoKeywords" v-model="formData.seoKeywords"
+                    placeholder="Từ khóa SEO (phân cách bằng dấu phẩy)" class="form-input">
+                </div>
+
+                <div class="form-group">
+                  <label for="tags" class="form-label">Tags</label>
                   <input type="text" id="tags" v-model="formData.tags" placeholder="tag1, tag2, tag3"
                     class="form-input">
+                  <div class="help-text">Phân cách các tags bằng dấu phẩy</div>
                 </div>
               </div>
             </div>
           </form>
         </div>
-        <div class="modal-footer">
-          <button @click="closeModal">Hủy</button>
-          <button @click="submitProduct" :disabled="submitting" class="btn-primary">
-            {{ submitting ? 'Đang xử lý...' : (showEditModal ? 'Cập nhật' : 'Thêm mới') }}
-          </button>
+
+        <!-- Modal Footer với Navigation -->
+        <div class="modal-footer with-nav">
+          <div class="nav-buttons">
+            <button v-if="currentStep > 0" @click="prevStep" type="button" class="btn-secondary" :disabled="submitting">
+              ← Quay lại
+            </button>
+            <button v-else @click="closeModal" type="button" class="btn-secondary" :disabled="submitting">
+              Hủy
+            </button>
+          </div>
+
+          <div class="step-indicator-mobile">
+            Bước {{ currentStep + 1 }}/{{ formSteps.length }}
+          </div>
+
+          <div class="action-buttons">
+            <button v-if="currentStep < formSteps.length - 1" @click="nextStep" type="button" class="btn-primary"
+              :disabled="!isStepValid(currentStep)">
+              Tiếp theo →
+            </button>
+            <button v-else @click="submitProduct" type="button" class="btn-primary"
+              :disabled="submitting || !isFormValid">
+              {{ submitting ? '🔄 Đang xử lý...' : (showEditModal ? '💾 Cập nhật' : '➕ Thêm mới') }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -420,6 +661,9 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { toast } from 'vue3-toastify'
+
+
+import API_BASE_URL_LOCAL from '../Util/APIBase.js';
 
 // Reactive data
 const products = ref([])
@@ -439,6 +683,18 @@ const statusFilter = ref('')
 const featuredFilter = ref('')
 const hotFilter = ref('')
 const selectedProducts = ref([])
+const uploadedImages = ref([])
+const mainImagePreview = ref('')
+const imageError = ref('')
+
+// Form steps
+const currentStep = ref(0)
+const formSteps = ref([
+  { label: 'Thông tin cơ bản', key: 'basic' },
+  { label: 'Hình ảnh', key: 'images' },
+  { label: 'Mô tả', key: 'description' },
+  { label: 'Cài đặt', key: 'settings' }
+])
 
 // Pagination data
 const currentPage = ref(1)
@@ -446,33 +702,43 @@ const pageSize = ref(20)
 
 // Form data
 const formData = ref({
-  id: 0,           // Thêm id ở đây, mặc định 0 cho add mới
+  id: 0,
   tenVi: '',
   tenEn: '',
+  tieuDeTrung: '',
+  tenKhongDau: '',
   masp: '',
   idList: '',
   giaban: 0,
   gianewp: 0,
   giacu: 0,
   soluong: 0,
+  donVi: '',
   stt: 1,
   noibat: 0,
   banchay: 0,
-  newField: 0,     // đổi new -> newField để khớp backend
+  newField: 0,
   khuyenmai: 0,
   nenmua: 0,
   hienthi: 1,
   motaVi: '',
   noidungVi: '',
   photo: '',
+  videoYoutube: '',
+  thuocTinh: [],
+  seoTitle: '',
+  seoKeywords: '',
+  seoDescription: '',
   tags: '',
-  type: 'san-pham'
+  dangKyKinhDoanhFile: null,
+  giayPhepKinhDoanhFile: null,
+  banCongBoSanPhamFile: null,
+  mainImageFile: null,
+  type: 'product'
 })
 
-
-
 // API configuration
-const API_BASE_URL = 'https://jq6kflwj-5173.asse.devtunnels.ms/api'
+const API_BASE_URL = API_BASE_URL_LOCAL
 
 // Computed properties
 const filteredProducts = computed(() => {
@@ -481,8 +747,8 @@ const filteredProducts = computed(() => {
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     filtered = filtered.filter(product =>
-      product.ten_vi?.toLowerCase().includes(query) ||
-      product.ten_en?.toLowerCase().includes(query) ||
+      product.tenVi?.toLowerCase().includes(query) ||
+      product.tenEn?.toLowerCase().includes(query) ||
       product.masp?.toLowerCase().includes(query) ||
       product.tags?.toLowerCase().includes(query)
     )
@@ -542,7 +808,65 @@ const isAllSelected = computed(() => {
     paginatedProducts.value.every(product => selectedProducts.value.some(selected => selected.id === product.id))
 })
 
+const isFormValid = computed(() => {
+  return formData.value.tenVi.trim() &&
+    formData.value.idList &&
+    formData.value.giaban > 0
+})
+
 // Methods
+const isStepValid = (step) => {
+  switch (step) {
+    case 0: // Basic info
+      return formData.value.tenVi.trim() &&
+        formData.value.idList &&
+        formData.value.giaban > 0
+    case 1: // Images
+      return true // Optional step
+    case 2: // Description
+      return true // Optional step
+    case 3: // Settings
+      return true // Optional step
+    default:
+      return false
+  }
+}
+
+const nextStep = () => {
+  if (currentStep.value < formSteps.value.length - 1 && isStepValid(currentStep.value)) {
+    currentStep.value++
+  }
+}
+
+const prevStep = () => {
+  if (currentStep.value > 0) {
+    currentStep.value--
+  }
+}
+
+const goToStep = (step) => {
+  if (step >= 0 && step < formSteps.value.length) {
+    // Validate all previous steps before allowing navigation
+    let canNavigate = true
+    for (let i = 0; i < step; i++) {
+      if (!isStepValid(i)) {
+        canNavigate = false
+        break
+      }
+    }
+
+    if (canNavigate) {
+      currentStep.value = step
+    } else {
+      toast.warning('Vui lòng hoàn thành các bước trước đó')
+    }
+  }
+}
+
+const openImageUpload = () => {
+  document.getElementById('mainImageUpload')?.click()
+}
+
 const handleSearch = () => {
   currentPage.value = 1
 }
@@ -586,11 +910,11 @@ const fetchProducts = async () => {
   try {
     const response = await fetch(`${API_BASE_URL}/products`)
     if (!response.ok) throw new Error('Network response was not ok')
-    products.value = await response.json()
-    toast.success('Danh sách sản phẩm đã được tải thành công')
+    const data = await response.json()
+    products.value = data
   } catch (error) {
     console.error('Error fetching products:', error)
-    alert('Lỗi khi tải danh sách sản phẩm')
+    toast.error('Lỗi khi tải danh sách sản phẩm')
   } finally {
     loading.value = false
   }
@@ -601,9 +925,9 @@ const fetchCategories = async () => {
     const response = await fetch(`${API_BASE_URL}/productLists`)
     if (!response.ok) throw new Error('Network response was not ok')
     categories.value = await response.json()
-    toast.success('Danh sách danh mục đã được tải thành công')
   } catch (error) {
     console.error('Error fetching categories:', error)
+    toast.error('Lỗi khi tải danh sách danh mục')
   }
 }
 
@@ -615,20 +939,31 @@ const deleteProductAPI = async (productId) => {
     }
   })
   if (!response.ok) throw new Error('Failed to delete product')
-  toast.success('Sản phẩm đã được xóa thành công')
   return true
 }
 
+const uploadImageAPI = async (file) => {
+  const formData = new FormData();
+  formData.append('image', file);
+
+  const response = await fetch(`${API_BASE_URL}/products/upload`, {
+    method: 'POST',
+    body: formData
+  });
+
+  if (!response.ok) throw new Error('Upload failed');
+  return await response.json();
+};
+
 const bulkDeleteProductsAPI = async (productIds) => {
-  const response = await fetch(`${API_BASE_URL}/products`, {
-    method: 'DELETE',
+  const response = await fetch(`${API_BASE_URL}/products/bulk-delete`, {
+    method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ productIds })
   })
   if (!response.ok) throw new Error('Failed to bulk delete products')
-  toast.success('Các sản phẩm đã được xóa thành công')
   return true
 }
 
@@ -638,10 +973,9 @@ const updateProductAPI = async (productId, data) => {
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ id: productId, ...data })
+    body: JSON.stringify({ ...data, id: productId })
   })
   if (!response.ok) throw new Error('Failed to update product')
-  toast.success('Sản phẩm đã được cập nhật thành công')
   return await response.json()
 }
 
@@ -654,7 +988,6 @@ const createProductAPI = async (data) => {
     body: JSON.stringify(data)
   })
   if (!response.ok) throw new Error('Failed to create product')
-  toast.success('Sản phẩm đã được tạo thành công')
   return await response.json()
 }
 
@@ -662,7 +995,7 @@ const updateProductFlagAPI = async (productId, field) => {
   const response = await fetch(`${API_BASE_URL}/products/${productId}?type=${field}`, {
     method: 'PUT',
   })
-  
+
   if (!response.ok) {
     throw new Error('Failed to toggle product flag')
   }
@@ -670,39 +1003,35 @@ const updateProductFlagAPI = async (productId, field) => {
   return true
 }
 
-
 const bulkUpdateStatusAPI = async (productIds, status) => {
   const response = await fetch(`${API_BASE_URL}/products/bulk-status`, {
-    method: 'POST',
+    method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ productIds, hienthi: status })
   })
   if (!response.ok) throw new Error('Failed to bulk update status')
-  toast.success('Trạng thái các sản phẩm đã được cập nhật thành công')
   return true
 }
 
 const bulkUpdateFlagAPI = async (productIds, field, value) => {
-  const response = await fetch(`${API_BASE_URL}/products/bulk-flag`, {
-    method: 'POST',
+  const response = await fetch(`${API_BASE_URL}/products`, {
+    method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ productIds, [field]: value })
   })
   if (!response.ok) throw new Error('Failed to bulk update flag')
-  toast.success('Cờ các sản phẩm đã được cập nhật thành công')
   return true
 }
 
 // Utility functions
 const getCategoryName = (id) => {
-  const c = categories.value.find(x => x.id === id)
-  return c ? c.tenVi : "N/A"
+  const category = categories.value.find(cat => cat.id === id)
+  return category ? category.tenVi : "N/A"
 }
-
 
 const getTags = (tags) => {
   if (!tags) return []
@@ -727,7 +1056,6 @@ const formatDate = (timestamp) => {
 const getImageUrl = (photo) => {
   if (!photo) return '/placeholder-image.jpg'
   if (photo.startsWith('http')) return photo
-
   return `${API_BASE_URL}/uploads/${photo}`
 }
 
@@ -777,14 +1105,18 @@ const clearSelection = () => {
 const editProduct = (product) => {
   productToEdit.value = product
   formData.value = {
+    id: product.id,
     tenVi: product.tenVi || '',
     tenEn: product.tenEn || '',
+    tieuDeTrung: product.tieuDeTrung || '',
+    tenKhongDau: product.tenKhongDau || '',
     masp: product.masp || '',
     idList: product.idList || '',
     giaban: product.giaban || 0,
     gianewp: product.gianewp || 0,
     giacu: product.giacu || 0,
     soluong: product.soluong || 0,
+    donVi: product.donVi || '',
     stt: product.stt || 1,
     noibat: product.noibat || 0,
     banchay: product.banchay || 0,
@@ -795,10 +1127,23 @@ const editProduct = (product) => {
     motaVi: product.motaVi || '',
     noidungVi: product.noidungVi || '',
     photo: product.photo || '',
+    videoYoutube: product.videoYoutube || '',
+    thuocTinh: product.thuocTinh || [],
+    seoTitle: product.seoTitle || '',
+    seoKeywords: product.seoKeywords || '',
+    seoDescription: product.seoDescription || '',
     tags: product.tags || '',
-    type: product.type || 'product'
+    type: product.type || 'product',
+    kg: product.kg || 0
   }
+
+  // Set main image preview if exists
+  if (product.photo) {
+    mainImagePreview.value = getImageUrl(product.photo)
+  }
+
   showEditModal.value = true
+  currentStep.value = 0
 }
 
 const confirmDeleteProduct = (product) => {
@@ -816,9 +1161,10 @@ const deleteProduct = async () => {
     selectedProducts.value = selectedProducts.value.filter(product => product.id !== productToDelete.value.id)
     showDeleteModal.value = false
     productToDelete.value = null
+    toast.success('Sản phẩm đã được xóa thành công')
   } catch (error) {
     console.error('Error deleting product:', error)
-    alert('Có lỗi xảy ra khi xóa sản phẩm')
+    toast.error('Có lỗi xảy ra khi xóa sản phẩm')
   } finally {
     deleting.value = false
   }
@@ -839,9 +1185,10 @@ const bulkDeleteProducts = async () => {
     products.value = products.value.filter(product => !productIds.includes(product.id))
     showBulkDeleteModal.value = false
     selectedProducts.value = []
+    toast.success('Các sản phẩm đã được xóa thành công')
   } catch (error) {
     console.error('Error bulk deleting products:', error)
-    alert('Có lỗi xảy ra khi xóa sản phẩm')
+    toast.error('Có lỗi xảy ra khi xóa sản phẩm')
   } finally {
     deleting.value = false
   }
@@ -880,9 +1227,10 @@ const bulkUpdateStatus = async (status) => {
         product.hienthi = status
       }
     })
+    toast.success('Trạng thái các sản phẩm đã được cập nhật')
   } catch (error) {
     console.error('Error bulk updating status:', error)
-    alert('Có lỗi xảy ra khi cập nhật trạng thái')
+    toast.error('Có lỗi xảy ra khi cập nhật trạng thái')
   }
 }
 
@@ -897,112 +1245,278 @@ const bulkUpdateFlag = async (field, value) => {
         product[field] = value
       }
     })
+    toast.success('Trạng thái các sản phẩm đã được cập nhật')
   } catch (error) {
     console.error('Error bulk updating flag:', error)
-    alert('Có lỗi xảy ra khi cập nhật trạng thái')
+    toast.error('Có lỗi xảy ra khi cập nhật trạng thái')
   }
 }
 
 const viewProduct = (product) => {
-  console.log('View product:', product)
-  alert(`Xem chi tiết sản phẩm: ${product.tenVi}`)
+  window.open(`/product/${product.id}`, '_blank')
 }
 
-const submitProduct = async () => {
-  if (!formData.value.tenVi.trim()) {
-    alert('Vui lòng nhập tên sản phẩm tiếng Việt')
+// File upload methods
+const handleMainImageUpload = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+
+  // Validate file type
+  if (!file.type.startsWith('image/')) {
+    imageError.value = 'File phải là hình ảnh'
     return
   }
 
-  if (!formData.value.idList) {
-    alert('Vui lòng chọn danh mục')
+  // Validate file size (max 5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    imageError.value = 'Kích thước file không được vượt quá 5MB'
     return
   }
 
-  if (!formData.value.giaban || formData.value.giaban <= 0) {
-    alert('Vui lòng nhập giá bán hợp lệ')
-    return
+  imageError.value = ''
+
+  // Tạo preview tạm thời
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    mainImagePreview.value = e.target.result
+  }
+  reader.readAsDataURL(file)
+
+  // Lưu file để upload sau
+  formData.value.mainImageFile = file
+  // Clear URL cũ nếu có
+  formData.value.photo = ''
+
+  // Reset input
+  event.target.value = ''
+}
+
+const handleUrlInput = () => {
+  // Khi người dùng nhập URL, xóa ảnh đã upload
+  if (formData.value.photo) {
+    mainImagePreview.value = ''
+    formData.value.mainImageFile = null
+    imageError.value = ''
+  }
+}
+
+const removeMainImage = () => {
+  mainImagePreview.value = ''
+  formData.value.mainImageFile = null
+  formData.value.photo = ''
+  imageError.value = ''
+}
+
+const handleFileUpload = (event) => {
+  const files = event.target.files
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i]
+    // Check if maximum limit reached
+    if (uploadedImages.value.length >= 5) {
+      toast.warning('Chỉ có thể upload tối đa 5 ảnh')
+      break
+    }
+
+    const reader = new FileReader()
+
+    reader.onload = (e) => {
+      uploadedImages.value.push({
+        file: file,
+        preview: e.target.result,
+        name: file.name
+      })
+    }
+
+    reader.readAsDataURL(file)
   }
 
-  submitting.value = true
-  try {
-    const submitData = {
-      ...formData.value,
-      ngaytao: Math.floor(Date.now() / 1000),
-      ngaysua: Math.floor(Date.now() / 1000),
-      username: 'admin'
-    }
+  event.target.value = ''
+}
 
-    if (showEditModal.value && productToEdit.value) {
-      const updatedProduct = await updateProductAPI(productToEdit.value.id, submitData)
-      const index = products.value.findIndex(p => p.id === productToEdit.value.id)
-      if (index !== -1) {
-        products.value[index] = { ...products.value[index], ...updatedProduct }
-      }
-      showEditModal.value = false
-      productToEdit.value = null
-    } else {
-      const newProduct = await createProductAPI(submitData)
-      products.value.unshift(newProduct)
-      showAddModal.value = false
-    }
+const removeImage = (index) => {
+  uploadedImages.value.splice(index, 1)
+}
 
-    formData.value = {
-      ten_vi: '',
-      ten_en: '',
-      masp: '',
-      id_list: '',
-      giaban: 0,
-      gianewp: 0,
-      giacu: 0,
-      soluong: 0,
-      stt: 1,
-      noibat: 0,
-      banchay: 0,
-      new: 0,
-      khuyenmai: 0,
-      nenmua: 0,
-      hienthi: 1,
-      mota_vi: '',
-      noidung_vi: '',
-      photo: '',
-      tags: '',
-      type: 'product'
-    }
-
-  } catch (error) {
-    console.error('Error saving product:', error)
-    alert('Có lỗi xảy ra khi lưu sản phẩm')
-  } finally {
-    submitting.value = false
+const addAttribute = () => {
+  if (!formData.value.thuocTinh) {
+    formData.value.thuocTinh = []
   }
+  formData.value.thuocTinh.push({ ten: '', giaTri: '' })
+}
+
+const removeAttribute = (index) => {
+  formData.value.thuocTinh.splice(index, 1)
+}
+
+const handleFileChange = (event, field) => {
+  const file = event.target.files[0]
+  if (file) {
+    formData.value[field + 'File'] = file
+  }
+}
+
+const removeFile = (field) => {
+  formData.value[field + 'File'] = null
+  document.getElementById(field).value = ''
+}
+
+const openAddModal = () => {
+  resetForm()
+  showAddModal.value = true
+  currentStep.value = 0
 }
 
 const closeModal = () => {
   showAddModal.value = false
   showEditModal.value = false
   productToEdit.value = null
+  resetForm()
+}
+
+const resetForm = () => {
   formData.value = {
-    ten_vi: '',
-    ten_en: '',
+    id: 0,
+    tenVi: '',
+    tenEn: '',
+    tieuDeTrung: '',
+    tenKhongDau: '',
     masp: '',
-    id_list: '',
+    idList: '',
     giaban: 0,
     gianewp: 0,
     giacu: 0,
     soluong: 0,
+    donVi: '',
     stt: 1,
     noibat: 0,
     banchay: 0,
-    new: 0,
+    newField: 0,
     khuyenmai: 0,
     nenmua: 0,
     hienthi: 1,
-    mota_vi: '',
-    noidung_vi: '',
+    motaVi: '',
+    noidungVi: '',
     photo: '',
+    videoYoutube: '',
+    thuocTinh: [],
+    seoTitle: '',
+    seoKeywords: '',
+    seoDescription: '',
     tags: '',
-    type: 'product'
+    type: 'san-pham',
+    kg: 0,
+    mainImageFile: null
+  }
+
+  uploadedImages.value = []
+  mainImagePreview.value = ''
+  imageError.value = ''
+  currentStep.value = 0
+}
+
+const submitProduct = async () => {
+  if (!isFormValid.value) {
+    toast.error('Vui lòng hoàn thành các thông tin bắt buộc')
+    currentStep.value = 0
+    return
+  }
+
+  // Validate main image - chỉ kiểm tra nếu là thêm mới
+  if (showAddModal.value && !formData.value.photo && !formData.value.mainImageFile) {
+    toast.error('Vui lòng chọn hình ảnh chính hoặc nhập URL hình ảnh')
+    currentStep.value = 1
+    return
+  }
+
+  submitting.value = true
+  try {
+    // Upload ảnh chính nếu có file mới
+    let finalPhotoUrl = formData.value.photo;
+    if (formData.value.mainImageFile) {
+      const uploadResult = await uploadImageAPI(formData.value.mainImageFile);
+      finalPhotoUrl = uploadResult.imageUrl;
+    }
+
+    // Chuẩn bị dữ liệu gửi lên server
+    const submitData = {
+      // Thông tin cơ bản
+      tenVi: formData.value.tenVi,
+      tenEn: formData.value.tenEn,
+      tieuDeTrung: formData.value.tieuDeTrung,
+      tenKhongDau: formData.value.tenKhongDau,
+      masp: formData.value.masp,
+      idList: formData.value.idList,
+
+      // Giá cả
+      giaban: formData.value.giaban,
+      gianewp: formData.value.gianewp,
+      giacu: formData.value.giacu,
+
+      // Tồn kho & thông tin khác
+      soluong: formData.value.soluong,
+      donVi: formData.value.donVi,
+      stt: formData.value.stt,
+      kg: formData.value.kg,
+
+      // Trạng thái
+      noibat: formData.value.noibat,
+      banchay: formData.value.banchay,
+      newField: formData.value.newField,
+      khuyenmai: formData.value.khuyenmai,
+      nenmua: formData.value.nenmua,
+      hienthi: formData.value.hienthi,
+
+      // Hình ảnh & Media
+      photo: finalPhotoUrl,
+      videoYoutube: formData.value.videoYoutube,
+
+      // Nội dung
+      motaVi: formData.value.motaVi,
+      noidungVi: formData.value.noidungVi,
+
+      // Thuộc tính
+      thuocTinh: formData.value.thuocTinh,
+
+      // SEO
+      seoTitle: formData.value.seoTitle,
+      seoKeywords: formData.value.seoKeywords,
+      seoDescription: formData.value.seoDescription,
+      tags: formData.value.tags,
+
+      // Type
+      type: formData.value.type
+    }
+
+    // Thêm id nếu là chỉnh sửa
+    if (showEditModal.value && productToEdit.value) {
+      submitData.id = productToEdit.value.id;
+    }
+
+    if (showEditModal.value && productToEdit.value) {
+      const updatedProduct = await updateProductAPI(productToEdit.value.id, submitData)
+
+      // Cập nhật lại danh sách sản phẩm
+      const index = products.value.findIndex(p => p.id === productToEdit.value.id)
+      if (index !== -1) {
+        products.value[index] = { ...products.value[index], ...updatedProduct }
+      }
+
+      showEditModal.value = false
+      productToEdit.value = null
+      toast.success('Sản phẩm đã được cập nhật thành công')
+    } else {
+      const newProduct = await createProductAPI(submitData)
+      products.value.unshift(newProduct)
+      showAddModal.value = false
+      toast.success('Sản phẩm đã được thêm thành công')
+    }
+
+    resetForm()
+  } catch (error) {
+    console.error('Error saving product:', error)
+    toast.error('Có lỗi xảy ra khi lưu sản phẩm: ' + error.message)
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -1012,7 +1526,6 @@ const resetFilters = () => {
   statusFilter.value = ''
   featuredFilter.value = ''
   hotFilter.value = ''
-  selectedProducts.value = []
   currentPage.value = 1
 }
 
@@ -1024,6 +1537,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* Base Styles */
 .product-management {
   padding: 20px;
   background: #f5f5f5;
@@ -1570,20 +2084,42 @@ onMounted(() => {
 }
 
 .large-modal {
-  max-width: 700px;
+  max-width: 800px;
+}
+
+.product-modal {
+  max-width: 800px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid #eee;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
 }
 
 .modal-header h3 {
   margin: 0;
-  color: #333;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+}
+
+.modal-icon {
+  font-size: 20px;
+}
+
+.product-id {
+  font-size: 14px;
+  opacity: 0.8;
+  font-weight: normal;
 }
 
 .close-btn {
@@ -1591,18 +2127,20 @@ onMounted(() => {
   border: none;
   font-size: 18px;
   cursor: pointer;
-  color: #666;
+  color: white;
   padding: 4px;
   border-radius: 4px;
   transition: background 0.3s;
 }
 
 .close-btn:hover {
-  background: #f5f5f5;
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .modal-body {
-  padding: 20px;
+  padding: 0;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .modal-footer {
@@ -1613,37 +2151,89 @@ onMounted(() => {
   border-top: 1px solid #eee;
 }
 
-.modal-footer button {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
+.modal-footer.with-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-top: 1px solid #eee;
+  background: #f8f9fa;
+}
+
+.nav-buttons,
+.action-buttons {
+  flex: 1;
+}
+
+.action-buttons {
+  text-align: right;
+}
+
+.step-indicator-mobile {
+  display: none;
   font-size: 14px;
-  transition: all 0.3s;
+  color: #666;
+  font-weight: 500;
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+/* Weight Input Group */
+.weight-input-group {
+  position: relative;
+}
+
+.weight-input {
+  padding-right: 50px;
+}
+
+.unit {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666;
+  font-weight: 600;
+  background: #f8f9fa;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
 }
 
 .btn-primary {
-  background: #d32f2f;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #b71c1c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
-.btn-delete {
-  background: #d32f2f;
-  color: white;
-}
-
-.btn-delete:hover:not(:disabled) {
-  background: #b71c1c;
-}
-
-.btn-primary:disabled,
-.btn-delete:disabled {
+.btn-primary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  background: white;
+  color: #666;
+  border: 2px solid #e0e0e0;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  border-color: #667eea;
+  color: #667eea;
 }
 
 .warning {
@@ -1686,103 +2276,529 @@ onMounted(() => {
   font-size: 12px;
 }
 
-/* Form */
-.product-form {
+.selected-more {
+  padding: 8px;
+  color: #666;
+  font-style: italic;
+  text-align: center;
+}
+
+/* Form Steps */
+.form-steps {
+  padding: 20px 24px 0;
+  background: white;
+  border-bottom: 1px solid #eee;
+}
+
+.step-indicator {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+}
+
+.step-indicator::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #e0e0e0;
+  z-index: 1;
+}
+
+.step {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+  cursor: pointer;
+  flex: 1;
 }
 
-.form-section {
-  margin-bottom: 20px;
-  padding: 15px;
-  background: #f8f9fa;
-  border-radius: 6px;
-  border: 1px solid #eee;
+.step-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #f5f5f5;
+  border: 2px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  margin-bottom: 8px;
+  transition: all 0.3s ease;
 }
 
-.form-section h4 {
-  margin: 0 0 15px 0;
-  color: #333;
-  font-size: 16px;
+.step-label {
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+  font-weight: 500;
+}
+
+.step.active .step-number {
+  background: #667eea;
+  border-color: #667eea;
+  color: white;
+}
+
+.step.completed .step-number {
+  background: #4caf50;
+  border-color: #4caf50;
+  color: white;
+}
+
+.step.active .step-label {
+  color: #667eea;
   font-weight: 600;
 }
 
-.form-row {
-  display: flex;
-  gap: 15px;
-  margin-bottom: 15px;
+/* Form Steps Content */
+.form-step {
+  padding: 24px;
 }
 
-.form-row:last-child {
-  margin-bottom: 0;
+.step-header {
+  margin-bottom: 24px;
+  text-align: center;
 }
 
+.step-header h4 {
+  font-size: 20px;
+  color: #333;
+  margin: 0 0 8px 0;
+}
+
+.step-description {
+  color: #666;
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Form Grid */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+/* Form Improvements */
 .form-group {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+  margin-bottom: 20px;
 }
 
-.form-group label {
-  font-weight: 500;
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
   color: #333;
   font-size: 14px;
+}
+
+.required-star {
+  color: #f44336;
+}
+
+.optional {
+  color: #666;
+  font-weight: normal;
+  font-size: 12px;
 }
 
 .form-input,
 .form-select,
 .form-textarea {
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  width: 90%;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
   font-size: 14px;
-  font-family: inherit;
-  transition: border 0.3s;
+  transition: all 0.3s ease;
+  background: white;
 }
 
 .form-input:focus,
 .form-select:focus,
 .form-textarea:focus {
   outline: none;
-  border-color: #d32f2f;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-.form-textarea {
+.form-input.error,
+.form-select.error {
+  border-color: #f44336;
+}
+
+.form-textarea.large {
+  min-height: 120px;
   resize: vertical;
-  min-height: 80px;
 }
 
-/* Status grid */
-.status-grid {
+/* Price Input */
+.price-input-group {
+  position: relative;
+}
+
+.price-input {
+  padding-right: 40px;
+}
+
+.currency {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666;
+  font-weight: 600;
+}
+
+/* Upload Sections */
+.upload-section {
+  margin-bottom: 24px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 2px dashed #e0e0e0;
+}
+
+.section-title {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+}
+
+/* Main Image Upload */
+.main-image-upload {
+  text-align: center;
+}
+
+.main-image-preview {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 16px;
+}
+
+.preview-image {
+  width: 200px;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 3px solid #e0e0e0;
+}
+
+.preview-actions {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+.upload-placeholder {
+  padding: 40px 20px;
+  border: 2px dashed #ccc;
+  border-radius: 12px;
+  background: white;
+}
+
+.upload-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.upload-text {
+  color: #666;
+  margin-bottom: 16px;
+}
+
+.upload-options {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.upload-option-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 2px solid #667eea;
+  border-radius: 8px;
+  background: white;
+  color: #667eea;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.upload-option-btn.primary {
+  background: #667eea;
+  color: white;
+}
+
+.upload-option-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.upload-hint {
+  margin-top: 12px;
+  color: #999;
+}
+
+/* Additional Images */
+.image-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 12px;
+}
+
+.image-item {
+  position: relative;
+  aspect-ratio: 1;
+}
+
+.preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid #e0e0e0;
+}
+
+.image-overlay {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.image-item:hover .image-overlay {
+  opacity: 1;
+}
+
+.upload-item {
+  aspect-ratio: 1;
+}
+
+.upload-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.upload-box:hover {
+  border-color: #667eea;
+  background: #f8f9ff;
+}
+
+/* Attributes */
+.attributes-section {
+  margin-top: 24px;
+}
+
+.attribute-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.attribute-input {
+  flex: 1;
+}
+
+.attribute-separator {
+  color: #666;
+  font-weight: 600;
+}
+
+.btn-add-attribute {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 2px dashed #667eea;
+  border-radius: 8px;
+  background: transparent;
+  color: #667eea;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  width: 100%;
+  justify-content: center;
+}
+
+.btn-add-attribute:hover {
+  background: #667eea;
+  color: white;
+}
+
+/* Status Grid Compact */
+.status-grid.compact {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
 }
 
 .status-checkbox {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px;
+  padding: 12px;
   background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.status-checkbox:hover {
+  border-color: #667eea;
+  transform: translateY(-1px);
+}
+
+.status-checkbox input:checked+.status-icon+.status-label {
+  font-weight: 600;
+}
+
+/* Different colors for different status types */
+.status-checkbox.featured input:checked~.status-icon {
+  color: #ffd700;
+}
+
+.status-checkbox.hot input:checked~.status-icon {
+  color: #ff6b6b;
+}
+
+.status-checkbox.new input:checked~.status-icon {
+  color: #4ecdc4;
+}
+
+.status-checkbox.sale input:checked~.status-icon {
+  color: #ff9ff3;
+}
+
+.status-checkbox.recommended input:checked~.status-icon {
+  color: #1dd1a1;
+}
+
+.status-checkbox.visible input:checked~.status-icon {
+  color: #54a0ff;
+}
+
+/* Character Count */
+.char-count {
+  text-align: right;
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+}
+
+/* Buttons */
+.btn-action {
+  padding: 6px;
+  border: none;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-action.danger {
+  background: #ff6b6b;
+  color: white;
+}
+
+.btn-action.small {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.btn-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Helpers */
+.full-width {
+  width: 100%;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.mt-4 {
+  margin-top: 16px;
+}
+
+.mb-4 {
+  margin-bottom: 16px;
+}
+
+.error-message {
+  color: #f44336;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.help-text {
+  color: #666;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* File upload styles */
+.file-input {
+  display: none;
+}
+
+.upload-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background-color: #f8f9fa;
   border: 1px solid #ddd;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.3s;
 }
 
-.status-checkbox:hover {
-  border-color: #d32f2f;
+.upload-btn:hover {
+  background-color: #e9ecef;
 }
 
-.status-checkbox input {
-  margin: 0;
+.upload-btn.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-.status-icon {
-  font-size: 16px;
+.upload-btn.disabled:hover {
+  background-color: #f8f9fa;
+  border-color: #ddd;
 }
 
 /* Responsive */
@@ -1826,30 +2842,68 @@ onMounted(() => {
     flex-direction: column;
   }
 
-  .status-grid {
+  .status-grid.compact {
     grid-template-columns: 1fr;
   }
 
-  .modal {
-    margin: 10px;
+  .upload-options {
+    flex-direction: column;
   }
 
-  .pagination {
+  .attribute-row {
     flex-direction: column;
-    gap: 15px;
+    align-items: stretch;
+  }
+
+  .attribute-separator {
+    display: none;
+  }
+
+  .product-modal {
+    margin: 10px;
+    max-height: 95vh;
+  }
+
+  .form-steps {
+    display: none;
+  }
+
+  .step-indicator-mobile {
+    display: block;
+    text-align: center;
+    flex: 1;
+  }
+
+  .modal-footer.with-nav {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .nav-buttons,
+  .action-buttons {
+    width: 100%;
     text-align: center;
   }
 
-  .pagination-controls {
-    order: 2;
+  .form-grid {
+    grid-template-columns: 1fr;
   }
 
-  .pagination-size {
-    order: 1;
+  .status-grid.compact {
+    grid-template-columns: 1fr;
   }
 
-  .pagination-info {
-    order: 3;
+  .upload-options {
+    flex-direction: column;
+  }
+
+  .attribute-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .attribute-separator {
+    display: none;
   }
 
   .table-wrapper {

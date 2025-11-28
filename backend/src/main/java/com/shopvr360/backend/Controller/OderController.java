@@ -34,7 +34,7 @@ public class OderController {
     }
     @PutMapping("/{id}")
     public ResponseEntity<TableDonhang> updateOrder(
-            @PathVariable Integer id,
+            @PathVariable Long  id,
             @RequestBody OderRequest request
     ) {
         return ResponseEntity.ok(orderService.updateDonhang(id, request));
@@ -47,10 +47,30 @@ public class OderController {
     }
 
     @DeleteMapping
-    public ResponseEntity<?> deleteMultiple(@RequestBody List<Integer> ids) throws IOException {
+    public ResponseEntity<?> deleteMultiple(@RequestBody List<Long > ids) throws IOException {
         orderService.deleteMultiple(ids);
         return ResponseEntity.ok("Xóa thành công loại sản phẩm có các ID = " + ids);
     }
+
+    @GetMapping("/detail/{id}")
+    public ResponseEntity<?> getOrderDetail(@PathVariable Long  id) {
+        return ResponseEntity.ok(orderService.getOrderDetail(id));
+    }
+
+    @PutMapping("/pay/{id}")
+    public ResponseEntity<?> payOrder(@PathVariable Long  id) {
+        orderService.payOrder(id);
+        return ResponseEntity.ok("Đã thanh toán thành công!");
+    }
+
+    @PutMapping("status/{id}/{status}")
+    public ResponseEntity<?> updateOrderStatus(@PathVariable Long  id , @PathVariable Integer status) {
+        orderService.statusOrder(id,status);
+        return ResponseEntity.ok("Đã thay đổi trạng thái thành công");
+
+    }
+
+
 
 
 }

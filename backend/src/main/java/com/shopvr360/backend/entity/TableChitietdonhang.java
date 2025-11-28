@@ -71,7 +71,7 @@ public class TableChitietdonhang {
 
     @NotNull
     @Column(name = "id_donhang", nullable = false)
-    private Integer idDonhang;
+    private Long  idDonhang;
 
     @NotNull
     @Column(name = "giakm", nullable = false)
@@ -203,11 +203,11 @@ public class TableChitietdonhang {
         this.masp = masp;
     }
 
-    public Integer getIdDonhang() {
+    public Long  getIdDonhang() {
         return idDonhang;
     }
 
-    public void setIdDonhang(Integer idDonhang) {
+    public void setIdDonhang(Long  idDonhang) {
         this.idDonhang = idDonhang;
     }
 

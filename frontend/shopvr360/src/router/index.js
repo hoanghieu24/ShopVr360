@@ -17,8 +17,10 @@ import User from '../pages/admin/user/User.vue'
 import Role from '../pages/admin/user/Role.vue'
 import AddUser from '../pages/admin/user/addUser.vue'
 import EditUser from '../pages/admin/user/editUser.vue'
-import ManageProductList  from '../pages/admin/ProductList/ManageProductList.vue'
+import ManageProductList from '../pages/admin/ProductList/ManageProductList.vue'
 import product from '../pages/admin/product/product.vue';
+import Order from '../pages/admin/order/Order.vue';
+import chitiet from '../pages/admin/order/chitiet.vue';
 
 const routes = [
   // CLIENT
@@ -42,37 +44,37 @@ const routes = [
     component: AdminLayout,
     children: [
       {
-        path: 'dashboard', 
-        name: 'admin-dashboard', 
+        path: 'dashboard',
+        name: 'admin-dashboard',
         component: Dashboard,
         meta: { title: 'Dashboard' }
       },
       {
-        path: 'users',   
+        path: 'users',
         name: 'admin-users',
         component: User,
         meta: { title: 'Quản lý Users' }
       },
       {
-        path: 'roles',   
+        path: 'roles',
         name: 'admin-roles',
         component: Role,
         meta: { title: 'Quản lý Roles' }
       },
       {
-        path: 'add-user',   
+        path: 'add-user',
         name: 'admin-add-user',
         component: AddUser,
         meta: { title: 'Thêm User' }
       },
       {
-        path: 'edit-user',   
+        path: 'edit-user',
         name: 'admin-edit-user',
         component: EditUser,
         meta: { title: 'Sửa User' }
       },
       {
-        path: 'categories',   
+        path: 'categories',
         name: 'ManageProductList',
         component: ManageProductList,
         meta: { title: 'Quản lý danh mục sản phẩm ' }
@@ -82,8 +84,20 @@ const routes = [
         name: 'admin-products',
         component: product,
         meta: { title: 'Quản lý sản phẩm' }
+      },
+      {
+        path: 'orders',
+        name: 'admin-orders',
+        component: Order,
+        meta: { title: 'Quản lý đơn hàng' }
+      },
+      {
+        path: 'order-detail/:id',
+        name: 'admin-order-detail',
+        component: chitiet,
+        meta: { title: 'Chi tiết đơn hàng' }
       }
-      
+
     ]
   }
 ]

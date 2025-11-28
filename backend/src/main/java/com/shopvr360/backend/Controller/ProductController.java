@@ -13,7 +13,15 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/products")
@@ -50,6 +58,72 @@ public class ProductController {
         return ResponseEntity.ok(product);
     }
 
+
+    @PostMapping("/upload")
+    public ResponseEntity<?> uploadImage(@RequestParam("image") MultipartFile file) {
+        try {
+            if (file.isEmpty()) {
+                return ResponseEntity.badRequest().body("File ảnh không được để trống");
+            }
+
+
+            String contentType = file.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                return ResponseEntity.badRequest().body("File phải là hình ảnh");
+            }
+
+
+            if (file.getSize() > 5 * 1024 * 1024) {
+                return ResponseEntity.badRequest().body("Kích thước file không được vượt quá 5MB");
+            }
+
+
+            String originalFileName = file.getOriginalFilename();
+            String fileExtension = "";
+            if (originalFileName != null && originalFileName.contains(".")) {
+                fileExtension = originalFileName.substring(originalFileName.lastIndexOf("."));
+            }
+
+            String fileName = "product_" + System.currentTimeMillis() + "_" +
+                    UUID.randomUUID().toString().substring(0, 8) + fileExtension;
+
+
+            LocalDate now = LocalDate.now();
+            String year = String.valueOf(now.getYear());
+            String month = String.format("%02d", now.getMonthValue());
+
+
+            String uploadRoot = "C:/Users/Nitro 5/Desktop/Shopvr360/ShopVr360/image/";
+            String uploadDir = uploadRoot;
+
+
+            Path uploadPath = Paths.get(uploadDir);
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+
+            Path filePath = uploadPath.resolve(fileName);
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+
+            String baseUrl = "http://localhost:8080";
+            String imageUrl = baseUrl + "/image/"  + fileName;
+
+            Map<String, String> response = new HashMap<>();
+            response.put("imageUrl", imageUrl);
+            response.put("filename", fileName);
+            response.put("message", "Upload ảnh thành công");
+
+            return ResponseEntity.ok(response);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Lỗi khi upload ảnh: " + e.getMessage());
+        }
+    }
+
+
     @PutMapping
     public ResponseEntity<?> updateProduct(@RequestBody ProductRequest productDTO) throws IOException {
         Long id = productDTO.getId();
@@ -65,8 +139,14 @@ public class ProductController {
     @DeleteMapping
     public ResponseEntity<?> deleteMultiple(@RequestBody List<Long> ids) {
         proDuctService.deleteMultiple(ids);
-        return ResponseEntity.ok("Đã xóa các sản phẩm có ID: " + ids);
+        return ResponseEntity.ok("Xoá Thành công nhiều sản phẩm ");
     }
+
+
+
+
+
+
 
 
 

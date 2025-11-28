@@ -161,10 +161,7 @@
                             <i class="nav-icon fas fa-tags"></i>
                             <span class="nav-text">Danh mục</span>
                         </router-link>
-                        <router-link to="/admin/inventory" class="nav-item" active-class="active">
-                            <i class="nav-icon fas fa-warehouse"></i>
-                            <span class="nav-text">Tồn kho</span>
-                        </router-link>
+                        
                     </div>
 
                     <!-- Quản lý đơn hàng -->
@@ -175,23 +172,48 @@
                             <span class="nav-text">Đơn hàng</span>
                             <span class="nav-badge">42</span>
                         </router-link>
-                        <router-link to="/admin/transactions" class="nav-item" active-class="active">
-                            <i class="nav-icon fas fa-exchange-alt"></i>
-                            <span class="nav-text">Giao dịch</span>
-                        </router-link>
                     </div>
 
                     <!-- Báo cáo & Thống kê -->
                     <div class="nav-section">
-                        <div class="section-label" v-if="!sidebarCollapsed">BÁO CÁO & THỐNG KÊ</div>
+                        <div class="section-label" v-if="!sidebarCollapsed">BÀI VIẾT</div>
                         <router-link to="/admin/reports" class="nav-item" active-class="active">
                             <i class="nav-icon fas fa-chart-bar"></i>
-                            <span class="nav-text">Báo cáo</span>
+                            <span class="nav-text">Quản lý tin tức</span>
                         </router-link>
-                        <router-link to="/admin/analytics" class="nav-item" active-class="active">
-                            <i class="nav-icon fas fa-chart-line"></i>
-                            <span class="nav-text">Phân tích</span>
+                        <router-link to="/admin/reports" class="nav-item" active-class="active">
+                            <i class="nav-icon fas fa-chart-bar"></i>
+                            <span class="nav-text">Quản lý mẹo vặt </span>
                         </router-link>
+                        <router-link to="/admin/reports" class="nav-item" active-class="active">
+                            <i class="nav-icon fas fa-chart-bar"></i>
+                            <span class="nav-text">Quản lý hệ thống </span>
+                        </router-link>
+                        <router-link to="/admin/reports" class="nav-item" active-class="active">
+                            <i class="nav-icon fas fa-chart-bar"></i>
+                            <span class="nav-text">Quản lý giới thiệu</span>
+                        </router-link>
+                        <router-link to="/admin/reports" class="nav-item" active-class="active">
+                            <i class="nav-icon fas fa-chart-bar"></i>
+                            <span class="nav-text">Quản lý thông tin </span>
+                        </router-link>
+                        <router-link to="/admin/reports" class="nav-item" active-class="active">
+                            <i class="nav-icon fas fa-chart-bar"></i>
+                            <span class="nav-text">Quản lý tiêu chí </span>
+                        </router-link>
+                        <router-link to="/admin/reports" class="nav-item" active-class="active">
+                            <i class="nav-icon fas fa-chart-bar"></i>
+                            <span class="nav-text">Quản lý hình thức thanh toán </span>
+                        </router-link>
+                        <router-link to="/admin/reports" class="nav-item" active-class="active">
+                            <i class="nav-icon fas fa-chart-bar"></i>
+                            <span class="nav-text">Quản lý Phương thức vận chuyển </span>
+                        </router-link>
+                        <router-link to="/admin/reports" class="nav-item" active-class="active">
+                            <i class="nav-icon fas fa-chart-bar"></i>
+                            <span class="nav-text">Quản lý khuyến mãi</span>
+                        </router-link>
+                        
                     </div>
 
                     <!-- Hệ thống -->
